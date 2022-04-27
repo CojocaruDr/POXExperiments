@@ -1,3 +1,5 @@
+import random
+
 from src.experiments import Experiment
 
 import os
@@ -36,16 +38,47 @@ class MatrixSizeExperiment(Experiment):
         if self.PREGENERATION:
             return
 
-        xvals, yvals, results = self.benchmark_multiplication(False, True)
-        plt.figure(1, (7, 5))
-        plt.plot(yvals, results)
-        plt.xlabel("Matrix Column Size")
-        plt.ylabel("Seconds to multiply")
-        plt.title("Multiplication time for two matrices")
+        xvals, yvals, results, m0_s, m1_s = self.benchmark_multiplication(False, True)
+        self.plot_results(xvals, yvals, results, m0_s, m1_s, "Matrix Column Size")
+
+        self.START_COL_SIZE = 20000
+        self.START_ROW_SIZE = 10000
+        self.INC_Y = 10000
+        self.INC_X = 10000
+        xvals, yvals, results, m0_s, m1_s = self.benchmark_multiplication(True, False)
+        self.plot_results(xvals, yvals, results, m0_s, m1_s, "Matrix Row Size")
+
+        self.START_COL_SIZE = 10000
+        self.START_ROW_SIZE = 10000
+        self.INC_Y = 5000
+        self.INC_X = 5000
+        xvals, yvals, results, m0_s, m1_s = self.benchmark_multiplication(True, True)
+        self.plot_results(xvals, yvals, results, m0_s, m1_s, "Matrix Size")
+
+    @staticmethod
+    def plot_results(xvals, yvals, results, m0_s, m1_s, xlabel):
+        fig, ax1 = plt.subplots(figsize=(7, 5))
+        ax1.plot(range(len(yvals)), results, color='brown')
+        ax1.tick_params(axis='y', labelcolor='brown')
+        ax1.set_xticks(range(len(yvals)))
+        ax1.set_xticklabels(["%dK" % int(x/1000) for x in yvals], rotation=40)
+        ax1.set_xlabel(xlabel)
+        ax1.set_ylabel("Seconds to multiply")
+        ax1.set_title("Multiplication time for two matrices")
+        ax1.legend(['Multiplication Seconds'])
+        ax2 = ax1.twinx()
+        color = 'royalblue'
+        ax2.bar([x - 1/len(yvals) for x in range(len(yvals))], m0_s, color=color, width=0.25, alpha=0.5)
+        ax2.bar([x + 1/len(yvals) for x in range(len(yvals))], m1_s, color='lightsteelblue', width=0.25, alpha=0.5)
+        ax2.tick_params(axis='y', labelcolor=color)
+        ax2.set_ylabel("Matrix sparsity (0 value counts)")
+        ax2.legend(['M1 Sparsity', 'M2 Sparsity'])
         print(xvals)
         print(yvals)
         print(results)
-        plt.show()
+        print(m0_s)
+        print(m1_s)
+        fig.show()
 
     def configure(self, **kwargs):
         if 'START_ROW_SIZE' in kwargs:
@@ -80,7 +113,7 @@ class MatrixSizeExperiment(Experiment):
             print(Fore.CYAN + "No pregenerated file found. Generating.")
             matrices = {}
             for i in range(10):
-                m0, m1 = self.generate_matrix()
+                m0, m1, z0, z1 = self.generate_matrix()
                 matrices['m0'] = m0.tolist()
                 matrices['m1'] = m1.tolist()
                 matrices['dimX'] = self.START_COL_SIZE
@@ -96,17 +129,32 @@ class MatrixSizeExperiment(Experiment):
     def generate_matrix(self):
         m0 = np.random.rand(self.START_ROW_SIZE, self.START_COL_SIZE)
         m1 = np.random.rand(self.START_ROW_SIZE, self.START_COL_SIZE)
-        return m0, m1
+
+        m0_z = self.randomize(m0)
+        m1_z = self.randomize(m1)
+
+        return m0, m1, m0_z, m1_z
+
+    def randomize(self, m):
+        z_count = np.random.randint(0, 1000)
+        for _ in range(z_count):
+            i = np.random.randint(0, self.START_ROW_SIZE)
+            j = np.random.randint(0, self.START_COL_SIZE)
+            m[i][j] = 0
+
+        return z_count
 
     def benchmark_multiplication(self, scaleX, scaleY):
         xvals = []
         yvals = []
+        m0_sparsity = []
+        m1_sparsity = []
         results = []
 
         while True:
 
             startTime = time.time()
-            m0, m1 = self.generate_matrix()
+            m0, m1, z0, z1 = self.generate_matrix()
             print(Fore.CYAN + "Generated %dx%d matrix in %.2f seconds" %
                   (self.START_COL_SIZE, self.START_ROW_SIZE, time.time() - startTime))
             startTime = time.time()
@@ -115,6 +163,8 @@ class MatrixSizeExperiment(Experiment):
             results.append(time.time() - startTime)
             print(Fore.CYAN + "Multiplied %dx%d matrix in %.2f seconds" %
                   (self.START_COL_SIZE, self.START_ROW_SIZE, results[-1]))
+            m0_sparsity.append(z0)
+            m1_sparsity.append(z1)
 
             xvals.append(self.START_ROW_SIZE)
             yvals.append(self.START_COL_SIZE)
@@ -126,4 +176,4 @@ class MatrixSizeExperiment(Experiment):
                     self.START_COL_SIZE += self.INC_Y
                 if scaleX:
                     self.START_ROW_SIZE += self.INC_X
-        return xvals, yvals, results
+        return xvals, yvals, results, m0_sparsity, m1_sparsity
