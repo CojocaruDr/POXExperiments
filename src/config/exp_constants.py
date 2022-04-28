@@ -1,4 +1,5 @@
 from src.experiments.matrix_size import MatrixSizeExperiment
+from src.experiments.arweave_experiment import ARWeaveExperiment
 
 EXP_FLAGS = {
     # Start from a small matrix size NxM and increase by K across both dimensions, and then across each dimension
@@ -9,11 +10,11 @@ EXP_FLAGS = {
 
     # Benchmarks a series of upload operations to verify AR network latency across time. This uses different file
     # sizes, and must have the key to a wallet with AR funds
-    'AR_UPLOAD_EXP': "ARUPLEXP",
+    'AR_UPLOAD_EXP': ARWeaveExperiment(True),
 
     # Similar to AR_UPLOAD_EXP, but benchmarks downloads of known, previously uploaded exercises. This will therefore
     # use a cache that's constantly updated with exercises uploaded by AR_UPLOAD_EXP, or manually.
-    'AR_DOWNLOAD_EXP': "ARDOWNEXP",
+    'AR_DOWNLOAD_EXP': ARWeaveExperiment(False),
 
     # Same as PEERCONNECT_RECV, but benchmarks running a series of sample network transactions to benchmark peer to peer
     # latency.

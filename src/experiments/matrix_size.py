@@ -1,10 +1,7 @@
-import random
-
 from src.experiments import Experiment
 
-import os
 import time
-import json
+import orjson
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -15,6 +12,19 @@ class MatrixSizeExperiment(Experiment):
     """
     For X=Y scaling, 10K x 10K with 5K scaling works great
     For Y/X only scaling, 10K x 20K with 10K scaling works great
+
+    Finding 1: Matrix dimensions are not really important. As long as the amount of data is the same,
+    if the matrix is bigger on X or Y is relevant.
+
+    Finding 2: Sparsity of the matrix does not affect multiplication time at all, as long as we dont change
+    the algorithm. Since we are talking about rather short multiplication times in any scenario, running a
+    sparsity test will delay the process rather than provide an advantage. 0 multiplications, even if optimized
+    by numpy, don't present a problem for PoX time assumptions
+
+    TODO: Experiment with different kinds of numbers as well as precision.
+    Ideally, this experiment produces a bar plot showing various numbers ([0, 1], [-1,1], [0, +1M],[-1M,+1M])
+    across 2 or 3 levels of precision (full precision, rounded to 5 digits, to 2 and to 0). Using normally
+    distributed numbers will do.
     """
 
     START_COL_SIZE = 20000
@@ -38,22 +48,9 @@ class MatrixSizeExperiment(Experiment):
         if self.PREGENERATION:
             return
 
-        xvals, yvals, results, m0_s, m1_s = self.benchmark_multiplication(False, True)
-        self.plot_results(xvals, yvals, results, m0_s, m1_s, "Matrix Column Size")
-
-        self.START_COL_SIZE = 20000
-        self.START_ROW_SIZE = 10000
-        self.INC_Y = 10000
-        self.INC_X = 10000
-        xvals, yvals, results, m0_s, m1_s = self.benchmark_multiplication(True, False)
-        self.plot_results(xvals, yvals, results, m0_s, m1_s, "Matrix Row Size")
-
-        self.START_COL_SIZE = 10000
-        self.START_ROW_SIZE = 10000
-        self.INC_Y = 5000
-        self.INC_X = 5000
         xvals, yvals, results, m0_s, m1_s = self.benchmark_multiplication(True, True)
         self.plot_results(xvals, yvals, results, m0_s, m1_s, "Matrix Size")
+
 
     @staticmethod
     def plot_results(xvals, yvals, results, m0_s, m1_s, xlabel):
@@ -107,33 +104,40 @@ class MatrixSizeExperiment(Experiment):
         They get multiplied in 0.16 seconds.
         :return:
         """
-        if len([x for x in os.listdir() if self.PREGENERATED_FILE in x]) > 0:
-            print(Fore.CYAN + "Found pregenerated file.")
-        else:
-            print(Fore.CYAN + "No pregenerated file found. Generating.")
-            matrices = {}
-            for i in range(10):
-                m0, m1, z0, z1 = self.generate_matrix()
-                matrices['m0'] = m0.tolist()
-                matrices['m1'] = m1.tolist()
-                matrices['dimX'] = self.START_COL_SIZE
-                matrices['dimY'] = self.START_ROW_SIZE
-                matrices['sparsityM0'] = np.count_nonzero(m0 == 0)
-                matrices['sparsityM1'] = np.count_nonzero(m1 == 0)
-                print(Fore.CYAN + "Generated %dx%d matrix." % (self.START_COL_SIZE, self.START_ROW_SIZE))
-                self.START_COL_SIZE += self.INC_Y
-                self.START_ROW_SIZE += self.INC_X
-                with open("%s%d.txt" % (self.PREGENERATED_FILE, i), "wb") as f:
-                    json.dump(matrices, f)
+        print(Fore.CYAN + "No pregenerated file found. Generating.")
+        matrices = {}
+        m0, m1, z0, z1 = self.generate_matrix()
+        matrices['m0'] = m0.tolist()
+        matrices['m1'] = m1.tolist()
+        matrices['dimX'] = self.START_COL_SIZE
+        matrices['dimY'] = self.START_ROW_SIZE
+        matrices['sparsityM0'] = z0
+        matrices['sparsityM1'] = z1
+        print(Fore.CYAN + "Generated %dx%d matrix." % (self.START_COL_SIZE, self.START_ROW_SIZE))
+        with open("../resources/poxsamples/%s%dx%d_round.txt" % (self.PREGENERATED_FILE, self.START_COL_SIZE, self.START_ROW_SIZE), "wb") as f:
+            dumped = orjson.dumps(matrices)
+            lastIndex = 0
+            print(Fore.CYAN + "Dumped string.")
+            for index in range(0, len(dumped), 50000):
+                if index == 0:
+                    continue
+
+                f.write(dumped[lastIndex:index - 1])
+                lastIndex = index
+                print(Fore.CYAN + "Wrote 50K...")
+
+            if lastIndex + 50000 >= len(dumped):
+                f.write(dumped[lastIndex:])
+                print(Fore.CYAN + "Wrote last bytes.")
 
     def generate_matrix(self):
-        m0 = np.random.rand(self.START_ROW_SIZE, self.START_COL_SIZE)
-        m1 = np.random.rand(self.START_ROW_SIZE, self.START_COL_SIZE)
+        m0 = np.random.normal(10000, 500, [self.START_ROW_SIZE, self.START_COL_SIZE])
+        m1 = np.random.normal(10000, 500, [self.START_ROW_SIZE, self.START_COL_SIZE])
 
         m0_z = self.randomize(m0)
         m1_z = self.randomize(m1)
 
-        return m0, m1, m0_z, m1_z
+        return np.around(m0, 4), np.around(m1, 4), m0_z, m1_z
 
     def randomize(self, m):
         z_count = np.random.randint(0, 1000)
