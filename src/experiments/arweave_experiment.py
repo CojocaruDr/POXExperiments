@@ -1,3 +1,5 @@
+import time
+
 from src.experiments import Experiment
 
 from arweave.arweave_lib import Wallet, Transaction
@@ -13,6 +15,10 @@ class ARWeaveExperiment(Experiment):
     # Don't search for it, it's not uploaded anywhere, and if it is it's empty
     ARWEAVE_WALLET_UP = '../ar_wallet_upload.json'
     ARWEAVE_WALLET_DOWN = '../ar_wallet_download.json'
+
+    TRANSACTIONS = [
+        ""
+    ]
 
     def __init__(self, isUpload):
         super().__init__()
@@ -51,6 +57,15 @@ class ARWeaveExperiment(Experiment):
                     uploader.pct_complete, uploader.uploaded_chunks, uploader.total_chunks
                 ))
             print(Fore.CYAN + "Upload complete! Tx: " + tx.id + ", Status: " + tx.get_status())
+
+    def download(self, tx_id):
+        startTime = time.time()
+        tx = Transaction(self.wallet, id=tx_id)
+        tx.get_transaction()
+        tx.get_data()
+        totalTime = time.time() - startTime
+        print(Fore.CYAN + "Fetched tx %s in %.2f seconds" % (tx_id, totalTime))
+        return totalTime
 
     def configure(self, **kwargs):
         if 'ARWEAVE_WALLET_UP' in kwargs:

@@ -1,4 +1,5 @@
 from src.experiments.matrix_size import MatrixSizeExperiment
+from src.experiments.matrix_density import MatrixDensityExperiment
 from src.experiments.arweave_experiment import ARWeaveExperiment
 
 EXP_FLAGS = {
@@ -7,6 +8,11 @@ EXP_FLAGS = {
     # and how well it scales This is almost always memory bound, and the experiment is run on various hardware to find
     # baselines for CPU and RAM size
     'MATRIX_SIZE_FINDER_EXP': MatrixSizeExperiment(),
+
+    # Benchmarks a series of pre-generated matrices. Multiplies them and gradually increases sparsity
+    # to verify impact. The pre-generated matrices are 700GB worth of exercises: 3 different ranges of numbers
+    # with 10 exercises for each.
+    'MATRIX_DENSITY_EXP': MatrixDensityExperiment(),
 
     # Benchmarks a series of upload operations to verify AR network latency across time. This uses different file
     # sizes, and must have the key to a wallet with AR funds

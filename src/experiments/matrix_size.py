@@ -1,7 +1,6 @@
 from src.experiments import Experiment
 
 import time
-import orjson
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -21,17 +20,27 @@ class MatrixSizeExperiment(Experiment):
     sparsity test will delay the process rather than provide an advantage. 0 multiplications, even if optimized
     by numpy, don't present a problem for PoX time assumptions
 
-    TODO: Experiment with different kinds of numbers as well as precision.
+    ~~TODO: Experiment with different kinds of numbers as well as precision.
     Ideally, this experiment produces a bar plot showing various numbers ([0, 1], [-1,1], [0, +1M],[-1M,+1M])
     across 2 or 3 levels of precision (full precision, rounded to 5 digits, to 2 and to 0). Using normally
-    distributed numbers will do.
+    distributed numbers will do.~~
+    DONE
+
+
+    Finding 3: All of the above are computed for np.multiply. For np.dot, things get different
+    For X=Y scaling, 5K x 5K with 1K scaling works great
+    For X only scaling (increase in row size), the time grows linearly. Ran with 5K x 10K and 5K increase
+    For Y only scaling (increase in col size), the timg grows as for X=Y.
+
+    Finding 1: It seems that matrices that are have more columns than rows (are wider), work faster.
+    Finding 2: Sparsity still doesn't really change anything
     """
 
-    START_COL_SIZE = 20000
+    START_COL_SIZE = 10000
     START_ROW_SIZE = 10000
 
-    INC_X = 10000
-    INC_Y = 10000
+    INC_X = 5000
+    INC_Y = 5000
 
     TARGET_TIME = 10
 
@@ -48,9 +57,15 @@ class MatrixSizeExperiment(Experiment):
         if self.PREGENERATION:
             return
 
-        xvals, yvals, results, m0_s, m1_s = self.benchmark_multiplication(True, True)
-        self.plot_results(xvals, yvals, results, m0_s, m1_s, "Matrix Size")
+        xvals, yvals, results, m0_s, m1_s = self.benchmark_multiplication(False, True)
+        self.plot_results(xvals, yvals, results, m0_s, m1_s, "Matrix Size (row)")
 
+        self.START_COL_SIZE = 5000
+        self.START_ROW_SIZE = 5000
+        self.INC_Y = 5000
+        self.INC_X = 5000
+        xvals, yvals, results, m0_s, m1_s = self.benchmark_multiplication(True, False)
+        self.plot_results(xvals, yvals, results, m0_s, m1_s, "Matrix Size (column)")
 
     @staticmethod
     def plot_results(xvals, yvals, results, m0_s, m1_s, xlabel):
@@ -99,51 +114,43 @@ class MatrixSizeExperiment(Experiment):
 
     def pregenerate_matrix(self):
         """
-        Does not work as is. Serialization of huge matrices needs to be heavily optimized.
-        As it is, 10K x 10K matrices take about 3.85 Gb and ~20 seconds to serialize.
-        They get multiplied in 0.16 seconds.
+        This is used to serialize a number of exercises to benchmark multiplication on later.
+        In first iterations, an optimal matrix size was found, and this function can now be used
+        to benchmark impact of sparsity and disk throughput
         :return:
         """
-        print(Fore.CYAN + "No pregenerated file found. Generating.")
-        matrices = {}
-        m0, m1, z0, z1 = self.generate_matrix()
-        matrices['m0'] = m0.tolist()
-        matrices['m1'] = m1.tolist()
-        matrices['dimX'] = self.START_COL_SIZE
-        matrices['dimY'] = self.START_ROW_SIZE
-        matrices['sparsityM0'] = z0
-        matrices['sparsityM1'] = z1
-        print(Fore.CYAN + "Generated %dx%d matrix." % (self.START_COL_SIZE, self.START_ROW_SIZE))
-        with open("../resources/poxsamples/%s%dx%d_round.txt" % (self.PREGENERATED_FILE, self.START_COL_SIZE, self.START_ROW_SIZE), "wb") as f:
-            dumped = orjson.dumps(matrices)
-            lastIndex = 0
-            print(Fore.CYAN + "Dumped string.")
-            for index in range(0, len(dumped), 50000):
-                if index == 0:
-                    continue
-
-                f.write(dumped[lastIndex:index - 1])
-                lastIndex = index
-                print(Fore.CYAN + "Wrote 50K...")
-
-            if lastIndex + 50000 >= len(dumped):
-                f.write(dumped[lastIndex:])
-                print(Fore.CYAN + "Wrote last bytes.")
+        print(Fore.CYAN + "Generating exercises.")
+        for count in range(0, 10):
+            i = 0
+            m0, m1, z0, z1 = self.generate_matrix()
+            print(Fore.CYAN + "Generated %dx%d matrix." % (self.START_COL_SIZE, self.START_ROW_SIZE))
+            for m in [m0, m1]:
+                with open("../resources/poxsamples_dot/%s%dx%d_%d_1M_%d.dat" %
+                          (self.PREGENERATED_FILE, self.START_COL_SIZE, self.START_ROW_SIZE, i, count), "wb") as f:
+                    f.write(m.tobytes())
+                    print(Fore.CYAN + "Wrote matrix m%d" % i)
+                    i += 1
 
     def generate_matrix(self):
-        m0 = np.random.normal(10000, 500, [self.START_ROW_SIZE, self.START_COL_SIZE])
-        m1 = np.random.normal(10000, 500, [self.START_ROW_SIZE, self.START_COL_SIZE])
+        if self.START_COL_SIZE == self.START_ROW_SIZE:
+            m0 = np.random.normal(1000000, 400000, [self.START_ROW_SIZE, self.START_COL_SIZE])
+            m1 = np.random.normal(1000000, 400000, [self.START_ROW_SIZE, self.START_COL_SIZE])
+            # m0 = np.random.randn(self.START_ROW_SIZE, self.START_COL_SIZE)
+            # m1 = np.random.randn(self.START_ROW_SIZE, self.START_COL_SIZE)
+        else:
+            m0 = np.random.randn(self.START_ROW_SIZE, self.START_COL_SIZE)
+            m1 = np.random.randn(self.START_COL_SIZE, self.START_ROW_SIZE)
 
         m0_z = self.randomize(m0)
         m1_z = self.randomize(m1)
 
-        return np.around(m0, 4), np.around(m1, 4), m0_z, m1_z
+        return m0, m1, m0_z, m1_z
 
     def randomize(self, m):
         z_count = np.random.randint(0, 1000)
         for _ in range(z_count):
-            i = np.random.randint(0, self.START_ROW_SIZE)
-            j = np.random.randint(0, self.START_COL_SIZE)
+            i = np.random.randint(0, len(m))
+            j = np.random.randint(0, len(m[0]))
             m[i][j] = 0
 
         return z_count
@@ -163,7 +170,7 @@ class MatrixSizeExperiment(Experiment):
                   (self.START_COL_SIZE, self.START_ROW_SIZE, time.time() - startTime))
             startTime = time.time()
 
-            np.multiply(m0, m1)
+            np.dot(m0, m1)
             results.append(time.time() - startTime)
             print(Fore.CYAN + "Multiplied %dx%d matrix in %.2f seconds" %
                   (self.START_COL_SIZE, self.START_ROW_SIZE, results[-1]))
