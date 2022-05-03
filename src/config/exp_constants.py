@@ -1,6 +1,7 @@
 from src.experiments.matrix_size import MatrixSizeExperiment
 from src.experiments.matrix_density import MatrixDensityExperiment
 from src.experiments.arweave_experiment import ARWeaveExperiment
+from src.experiments.s3_experiment import S3Experiment
 
 EXP_FLAGS = {
     # Start from a small matrix size NxM and increase by K across both dimensions, and then across each dimension
@@ -21,6 +22,12 @@ EXP_FLAGS = {
     # Similar to AR_UPLOAD_EXP, but benchmarks downloads of known, previously uploaded exercises. This will therefore
     # use a cache that's constantly updated with exercises uploaded by AR_UPLOAD_EXP, or manually.
     'AR_DOWNLOAD_EXP': ARWeaveExperiment(False),
+
+    # Same as AR_UPLOAD_EXP, but using S3
+    'S3_UPLOAD_EXP': S3Experiment(True),
+
+    # Same as AR_DOWNLOAD_EXP, but using S3
+    'S3_DOWNLOAD_EXP': S3Experiment(False),
 
     # Same as PEERCONNECT_RECV, but benchmarks running a series of sample network transactions to benchmark peer to peer
     # latency.
