@@ -1,4 +1,7 @@
 import time
+import random
+
+import numpy as np
 
 from src.experiments import Experiment
 
@@ -51,6 +54,21 @@ class ARWeaveExperiment(Experiment):
     Finding4: Speeds remain the same after the upload is finished. once enough blocks are stacked on top of the initial
     tx, the download will max out the bandwidth.
 
+    Finding5: Probably the most conclusive so far. The output of the blocktime experiment here:
+
+    It takes about 22.77 seconds to download an exercise (67.02 Mb/s avg), and 4.51 seconds to solve it
+    You need at least 338.03 Mb/s to continuously mine proofs of exercise
+
+    It must also be noted that for every exercise, another at least ~166 seconds are needed to upload the solution,
+    and at least 56 minutes to fully load it into ARWeave
+
+    The generic formula would be that:
+    For a fixed matrix size of 10K x 10K, X seconds to download two matrices, and Y seconds to dot them:
+    * A miner can efficiently mine PoX if X>=Y (TODO: try to relax this constraint by factoring in verification phase)
+    That means, a miner must have a download speed of at least 1,525.87 * X / (Y + Y')  Mb/s, where Y' is what we can
+    estimate verification time spent per solved exercise (verification on any other exercise, prefetched).
+
+    These numbers show clearly that no miner has any incentive to verify exercises it didn't cache.
     """
 
     isUpload = False
@@ -80,7 +98,10 @@ class ARWeaveExperiment(Experiment):
         if self.isUpload:
             self.run_upload()
         else:
-            self.run_download()
+            # self.run_download()
+            # dTimes, mTimes, tTimes = self.run_blocktime()
+            # self.plot_block_times(dTimes, mTimes, tTimes)
+            self.plot_block_times(None, None, None)
         # self.plot_results()
 
     def plot_results(self):
@@ -126,11 +147,63 @@ class ARWeaveExperiment(Experiment):
         while True:
             for tx in self.TRANSACTIONS:
                 timestamps.append(time.time())
-                dTime = self.download(tx)
+                dTime, _ = self.download(tx)
                 print(Fore.CYAN + "Downloaded %s in %.2f seconds." % (self.TRANSACTIONS[tx], dTime))
                 times.append(dTime)
                 print(times)
                 print(timestamps)
+
+    def run_blocktime(self):
+        exercises = ["gSFcJjCYtZ1OFZ3UteoIJ1UjZLUanMsS_O0XVYwPuHI", "LsKHq8uhwjhA_dxTQmxaCD9UL7_puQ_mvmWn6hgd2kE",
+                     "pI8Ose_wiAofAbqCFg9Yry4Z0jR45ubEPpHZTv8h8CI"]
+        dTimes = []
+        mTimes = []
+        tTimes = []
+
+        for i in range(20):
+            e1 = exercises[random.randint(0, len(exercises) - 1)]
+            e2 = exercises[random.randint(0, len(exercises) - 1)]
+            print(Fore.CYAN + "Starting block %d..." % i)
+            startTime = time.time()
+            _, e1 = self.download(e1)
+            _, e2 = self.download(e2)
+            dTime = time.time()
+            m1 = np.frombuffer(e1).reshape([10000, 10000])
+            m2 = np.frombuffer(e2).reshape([10000, 10000])
+            np.dot(m1, m2)
+            mTime = time.time()
+            dTimes.append(dTime - startTime)
+            mTimes.append(mTime - dTime)
+            tTimes.append(mTime - startTime)
+        print("DTimes: ", dTimes)
+        print("MTimes: ", mTimes)
+        print("TTimes: ", tTimes)
+
+        return dTimes, mTimes, tTimes
+
+    @staticmethod
+    def plot_block_times(dTimes, mTimes, tTimes):
+        dTimes = [19.341373920440674, 18.62544059753418, 19.3857364654541, 31.204410791397095, 31.55591630935669,
+                 24.566789150238037, 18.610035181045532, 25.6288058757782, 24.941190242767334, 25.477713108062744,
+                 18.955212354660034, 30.861459255218506, 30.648075819015503, 19.22837543487549, 24.243753671646118,
+                 18.71207308769226, 18.618319511413574, 18.065333127975464, 18.27892017364502, 18.405789136886597]
+        mTimes = [4.761505842208862, 4.471505165100098, 4.4330055713653564, 4.464005708694458, 4.499505281448364, 4.437505006790161, 4.4165050983428955, 4.4165050983428955, 4.4330055713653564, 4.488003730773926, 4.4845051765441895, 4.551005125045776, 4.487504959106445, 4.459005117416382, 4.69600510597229, 4.570005655288696, 4.562505483627319, 4.543005704879761, 4.5405049324035645, 4.565004587173462]
+        tTimes = [24.102879762649536, 23.096945762634277, 23.818742036819458, 35.66841650009155, 36.055421590805054, 29.0042941570282, 23.026540279388428, 30.045310974121094, 29.37419581413269, 29.96571683883667, 23.439717531204224, 35.41246438026428, 35.13558077812195, 23.68738055229187, 28.939758777618408, 23.282078742980957, 23.180824995040894, 22.608338832855225, 22.819425106048584, 22.97079372406006]
+
+        fig, ax1 = plt.subplots(figsize=(7, 5))
+        ax1.plot(range(len(dTimes)), dTimes, color='lightsteelblue')
+        ax1.plot(range(len(mTimes)), mTimes, color='cornflowerblue')
+        ax1.plot(range(len(tTimes)), tTimes, color='royalblue')
+        ax1.set_title("Download+Multiplication on 20 random instances")
+        ax1.legend(['download time', 'dot time', 'total time'])
+        fig.show()
+
+        dAvg = np.average(dTimes)
+        mAvg = np.average(mTimes)
+        exerciseSize = 10000 * 10000 * 8 * 2  # 10K x 10K x sizeof(float)
+        avgDownSpeed = exerciseSize / dAvg / 1024 / 1024  # Mb/s
+        print("It takes about %.2f seconds to download an exercise (%.2f Mb/s avg), and %.2f seconds to solve it" % (dAvg, avgDownSpeed, mAvg))
+        print("You need at least %.2f Mb/s to continuously mine proofs of exercise" % (avgDownSpeed * (dAvg / mAvg)))
 
     def upload(self, filePath):
         """
@@ -185,9 +258,9 @@ class ARWeaveExperiment(Experiment):
             print(tx)
         except Exception as e:
             pass
-        print(Fore.RED + "[DownThread] Finished downloading at ", time.time())
         totalTime = time.time() - startTime
-        return totalTime
+        print(Fore.RED + "[DownThread] Finished downloading at %.1f, (%.2f seconds)" % (time.time(), totalTime))
+        return totalTime, tx.data
 
     def configure(self, **kwargs):
         if 'ARWEAVE_WALLET_UP' in kwargs:
