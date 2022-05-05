@@ -1,0 +1,12 @@
+syntax = "proto2";
+import "generic.proto";
+
+package poxproto;
+
+message ValidateRequest {
+  optional string name = 1;
+  required string solution = 2;
+  required Solver solver = 4;
+  required StorageProvider storageProvider = 5;
+  required VerificationSchema verificationSchema = 6;
+}

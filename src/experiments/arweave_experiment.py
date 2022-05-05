@@ -74,12 +74,12 @@ class ARWeaveExperiment(Experiment):
     isUpload = False
 
     # Don't search for it, it's not uploaded anywhere, and if it is it's empty
-    ARWEAVE_WALLET_UP = '../resources/ar_wallet_upload.json'
-    ARWEAVE_WALLET_DOWN = '../resources/ar_wallet_download.json'
+    ARWEAVE_WALLET_UP = './resources/ar_wallet_upload.json'
+    ARWEAVE_WALLET_DOWN = './resources/ar_wallet_download.json'
 
-    M0_PATH = "../resources/poxsamples_dot/generated_mat10000x10000_0_1M_1.dat"
-    M1_PATH = "../resources/poxsamples_dot/generated_mat10000x10000_1_1M_1.dat"
-    DUMMY_PATH = "../resources/dummyfile.dat"
+    M0_PATH = "./resources/poxsamples_dot/generated_mat10000x10000_0_1M_1.dat"
+    M1_PATH = "./resources/poxsamples_dot/generated_mat10000x10000_1_1M_1.dat"
+    DUMMY_PATH = "./resources/dummyfile.dat"
 
     TRANSACTIONS = {
         "-oF1ADpK5Rnz8QN_jeycqPO-wmYvDBCSxRDM0802URM": "dummyfile.dat",

@@ -17,7 +17,7 @@ class MatrixDensityExperiment(Experiment):
     matrices still takes about as long as a randomly initialized matrix
     """
     PREGENERATED_FILE_PREFIX = "generated_mat"
-    PREGENERATED_DIR = "../resources/poxsamples_dot"
+    PREGENERATED_DIR = "./resources/poxsamples_dot"
 
     MATRICE_PATHS = {
         '1M': {

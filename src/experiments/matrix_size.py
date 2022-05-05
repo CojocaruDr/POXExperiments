@@ -125,7 +125,7 @@ class MatrixSizeExperiment(Experiment):
             m0, m1, z0, z1 = self.generate_matrix()
             print(Fore.CYAN + "Generated %dx%d matrix." % (self.START_COL_SIZE, self.START_ROW_SIZE))
             for m in [m0, m1]:
-                with open("../resources/poxsamples_dot/%s%dx%d_%d_1M_%d.dat" %
+                with open("./resources/poxsamples_dot/%s%dx%d_%d_1M_%d.dat" %
                           (self.PREGENERATED_FILE, self.START_COL_SIZE, self.START_ROW_SIZE, i, count), "wb") as f:
                     f.write(m.tobytes())
                     print(Fore.CYAN + "Wrote matrix m%d" % i)

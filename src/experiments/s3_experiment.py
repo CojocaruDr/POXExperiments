@@ -11,18 +11,18 @@ from colorama import Fore
 
 class S3Experiment(Experiment):
     """
-    After observing the latencies for ARweave (which was the prefered storage provider for POX), I decided
+    After observing the latencies for ARweave (which was the preferred storage provider for POX), I decided
     to benchmark S3 performance as well. There is also filecoin, a project that is in direct competition
     with S3, however the only advantage is that it is supposedly cheaper, and since it is decentralized, it
     is also supposed to be more reliable. None of that matters in the experiment phase.
 
     Upload speeds:
-    * ../resources/poxsamples_dot/generated_mat10000x10000_1_1M_0.dat: 166.42
-    * ../resources/poxsamples_dot/generated_mat10000x10000_0_1M_0.dat: 166.84
+    * ./resources/poxsamples_dot/generated_mat10000x10000_1_1M_0.dat: 166.42
+    * ./resources/poxsamples_dot/generated_mat10000x10000_0_1M_0.dat: 166.84
 
     Download speeds:
-    * ../resources/poxsamples_dot/generated_mat10000x10000_1_1M_0.dat: 80.28
-    * ../resources/poxsamples_dot/generated_mat10000x10000_0_1M_0.dat: 83.00
+    * ./resources/poxsamples_dot/generated_mat10000x10000_1_1M_0.dat: 80.28
+    * ./resources/poxsamples_dot/generated_mat10000x10000_0_1M_0.dat: 83.00
 
     Finding 1: While upload speeds are probably the best out of all the storage providers, the download speeds
     are awful unless you replicate the S3 bucket in all regions. Proximity to an AWS datacenter is crucial here.
@@ -30,9 +30,9 @@ class S3Experiment(Experiment):
 
     isUpload = False
 
-    M0_PATH = "../resources/poxsamples_dot/generated_mat10000x10000_0_1M_0.dat"
-    M1_PATH = "../resources/poxsamples_dot/generated_mat10000x10000_1_1M_0.dat"
-    DUMMY_PATH = "../resources/dummyfile.dat"
+    M0_PATH = "./resources/poxsamples_dot/generated_mat10000x10000_0_1M_0.dat"
+    M1_PATH = "./resources/poxsamples_dot/generated_mat10000x10000_1_1M_0.dat"
+    DUMMY_PATH = "./resources/dummyfile.dat"
 
     S3_BUCKET = "m1-pox-example"
 

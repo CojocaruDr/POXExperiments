@@ -1,0 +1,19 @@
+syntax = "proto2";
+
+package poxproto;
+
+enum Solver {
+  DotSolver = 0;
+  MultiplicationSolver = 1;
+}
+
+enum StorageProvider {
+  AWS = 0;
+  ARWEAVE = 1;
+  AZURE = 2;
+}
+
+enum VerificationSchema {
+  PROBABILISTIC = 0;
+  CHECKSUM = 1;
+}

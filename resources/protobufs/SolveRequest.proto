@@ -1,0 +1,13 @@
+syntax = "proto2";
+import "generic.proto";
+
+package poxproto;
+
+message SolveRequest {
+  optional string name = 1;
+  repeated string m0Ids = 2;
+  repeated string m1Ids = 3;
+  required Solver solver = 4;
+  required StorageProvider storageProvider = 5;
+  required VerificationSchema verificationSchema = 6;
+}

@@ -2,6 +2,7 @@ from src.experiments.matrix_size import MatrixSizeExperiment
 from src.experiments.matrix_density import MatrixDensityExperiment
 from src.experiments.arweave_experiment import ARWeaveExperiment
 from src.experiments.s3_experiment import S3Experiment
+from src.experiments.server_experiment import ServerBasedExperiment
 
 EXP_FLAGS = {
     # Start from a small matrix size NxM and increase by K across both dimensions, and then across each dimension
@@ -31,7 +32,7 @@ EXP_FLAGS = {
 
     # Same as PEERCONNECT_RECV, but benchmarks running a series of sample network transactions to benchmark peer to peer
     # latency.
-    'PEERCONNECT_SEND': "PCONSEND",
+    'PEERCONNECT_SEND': ServerBasedExperiment(),
 
     # Waits for valid PoX messages from any address, benchmarking wait times. This is used to estimate network
     # overhead, and potential blockers in the communication protocol with respect to PoX efficiency
