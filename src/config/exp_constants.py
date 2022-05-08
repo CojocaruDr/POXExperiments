@@ -32,9 +32,9 @@ EXP_FLAGS = {
 
     # Same as PEERCONNECT_RECV, but benchmarks running a series of sample network transactions to benchmark peer to peer
     # latency.
-    'PEERCONNECT_SEND': ServerBasedExperiment(),
+    'PEERCONNECT_SEND': ServerBasedExperiment(False),
 
     # Waits for valid PoX messages from any address, benchmarking wait times. This is used to estimate network
     # overhead, and potential blockers in the communication protocol with respect to PoX efficiency
-    'PEERCONNECT_RECV': "PCONRECV"
+    'PEERCONNECT_RECV': ServerBasedExperiment(True)
 }

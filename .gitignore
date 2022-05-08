@@ -129,6 +129,7 @@ dmypy.json
 .pyre/
 
 *_pb2.py
+src/pythonp2p
 
 # Don't upload the wallet with tokens
 resources/ar_wallet_upload.json
