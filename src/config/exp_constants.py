@@ -3,6 +3,7 @@ from src.experiments.matrix_density import MatrixDensityExperiment
 from src.experiments.arweave_experiment import ARWeaveExperiment
 from src.experiments.s3_experiment import S3Experiment
 from src.experiments.server_experiment import ServerBasedExperiment
+from src.experiments.consistent_hashing_experiment import ConsistentHashExp
 
 EXP_FLAGS = {
     # Start from a small matrix size NxM and increase by K across both dimensions, and then across each dimension
@@ -36,5 +37,9 @@ EXP_FLAGS = {
 
     # Waits for valid PoX messages from any address, benchmarking wait times. This is used to estimate network
     # overhead, and potential blockers in the communication protocol with respect to PoX efficiency
-    'PEERCONNECT_RECV': ServerBasedExperiment(True)
+    'PEERCONNECT_RECV': ServerBasedExperiment(True),
+
+    # Various experiments based on the consistent hashing methods used in the PoUW protocol. Computes the network node
+    # distribution when selecting exercises to solve, to validate, and other network parameters.
+    'CONSISTENT_HASH': ConsistentHashExp()
 }

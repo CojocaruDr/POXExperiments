@@ -73,6 +73,8 @@ class ARWeaveExperiment(Experiment):
 
     isUpload = False
 
+    VALIDATION_EXP = True
+
     # Don't search for it, it's not uploaded anywhere, and if it is it's empty
     ARWEAVE_WALLET_UP = './resources/ar_wallet_upload.json'
     ARWEAVE_WALLET_DOWN = './resources/ar_wallet_download.json'
@@ -99,9 +101,9 @@ class ARWeaveExperiment(Experiment):
             self.run_upload()
         else:
             # self.run_download()
-            # dTimes, mTimes, tTimes = self.run_blocktime()
-            # self.plot_block_times(dTimes, mTimes, tTimes)
-            self.plot_block_times(None, None, None)
+            dTimes, mTimes, tTimes = self.run_blocktime()
+            self.plot_block_times(dTimes, mTimes, tTimes)
+            # self.plot_block_times(None, None, None)
         # self.plot_results()
 
     def plot_results(self):
@@ -170,7 +172,12 @@ class ARWeaveExperiment(Experiment):
             dTime = time.time()
             m1 = np.frombuffer(e1).reshape([10000, 10000])
             m2 = np.frombuffer(e2).reshape([10000, 10000])
-            np.dot(m1, m2)
+            if self.VALIDATION_EXP:
+                i = random.randint(0, 10000)
+                j = random.randint(0, 10000)
+                np.dot(m1[i], m2[:, j])
+            else:
+                np.dot(m1, m2)
             mTime = time.time()
             dTimes.append(dTime - startTime)
             mTimes.append(mTime - dTime)
@@ -194,7 +201,7 @@ class ARWeaveExperiment(Experiment):
         ax1.plot(range(len(dTimes)), dTimes, color='lightsteelblue')
         ax1.plot(range(len(mTimes)), mTimes, color='cornflowerblue')
         ax1.plot(range(len(tTimes)), tTimes, color='royalblue')
-        ax1.set_title("Download+Multiplication on 20 random instances")
+        ax1.set_title("Download+Validation on 20 random instances")
         ax1.legend(['download time', 'dot time', 'total time'])
         fig.show()
 
