@@ -73,7 +73,7 @@ class ARWeaveExperiment(Experiment):
 
     isUpload = False
 
-    VALIDATION_EXP = True
+    VALIDATION_EXP = False
 
     # Don't search for it, it's not uploaded anywhere, and if it is it's empty
     ARWEAVE_WALLET_UP = './resources/ar_wallet_upload.json'
@@ -175,9 +175,9 @@ class ARWeaveExperiment(Experiment):
             if self.VALIDATION_EXP:
                 i = random.randint(0, 10000)
                 j = random.randint(0, 10000)
-                np.dot(m1[i], m2[:, j])
+                res = np.dot(m1[i], m2[:, j])
             else:
-                np.dot(m1, m2)
+                res = np.dot(m1, m2)
             mTime = time.time()
             dTimes.append(dTime - startTime)
             mTimes.append(mTime - dTime)
