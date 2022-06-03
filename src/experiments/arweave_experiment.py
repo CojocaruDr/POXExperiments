@@ -100,9 +100,9 @@ class ARWeaveExperiment(Experiment):
         if self.isUpload:
             self.run_upload()
         else:
-            # self.run_download()
-            dTimes, mTimes, tTimes = self.run_blocktime()
-            self.plot_block_times(dTimes, mTimes, tTimes)
+            self.run_download()
+            # dTimes, mTimes, tTimes = self.run_blocktime()
+            # self.plot_block_times(dTimes, mTimes, tTimes)
             # self.plot_block_times(None, None, None)
         # self.plot_results()
 

@@ -1,3 +1,6 @@
+import random
+import time
+
 import base58
 import binascii
 import ecdsa
@@ -9,6 +12,8 @@ from arweave.arweave_lib import arql
 
 from uhashring import HashRing
 from colorama import Fore
+
+from pytrie import StringTrie
 
 from src.experiments import Experiment
 
@@ -32,7 +37,81 @@ class ConsistentHashExp(Experiment):
         super().__init__()
 
     def run(self):
-        self.run_tx_deviation()
+        self.run_overtake_prob()
+
+    def run_overtake_prob(self):
+        attacker_size = 5000
+        buckets = 20
+        key_count = 10_000
+
+        print(Fore.CYAN + "Generating keys...")
+        keys = self.generate_keys(key_count)
+        print(Fore.CYAN + "Generated %d keys..." % key_count)
+
+        self.create_hashring(buckets)
+
+        xvals = []
+        results = []
+        blocks = 1000
+        for i in range(blocks):
+            load = self.hash_keys(keys[:attacker_size], buckets)
+            xvals.append(i)
+            results.append(max(load))
+            if i % 100 == 0:
+                print(Fore.CYAN + "Computed block %d/%d" % (i, blocks))
+        self.plot_attacker_size(xvals, results)
+
+    @staticmethod
+    def plot_attacker_size(xvals, results):
+        fig, ax = plt.subplots()
+        ax.plot(xvals, results, color='royalblue')
+        ax.set_title("Maximum number of attacker nodes in the same group (10 total groups)")
+        ax.set_xlabel("Block number")
+        ax.set_ylabel("Number of attacker nodes in one group")
+        fig.show()
+
+    def run_trie_benchmark(self):
+        results = []
+        actual_size = []
+        xvals = []
+        total = 50000
+        for i in range(1000, total, 1000):
+            startTime = time.time()
+            hashes = [''.join([chr(x) for x in hashlib.sha256(bytes(str(j) + "hash stringer", 'utf-8')).digest()])
+                      for j in range(i)]
+            print(Fore.CYAN + "Computed hashes for %d/%d entries in %.2fs." % (i, total, time.time() - startTime))
+            trie = StringTrie.fromkeys(hashes)
+            results.append(self.compute_trie_size(trie._root) / 1024 / 1024)
+            xvals.append(i)
+            actual_size.append(32 * len(hashes) / 1024 / 1024)
+
+        print(xvals)
+        print(results)
+        print(actual_size)
+        self.plot_trie_sizes(xvals, results, actual_size)
+
+    def compute_trie_size(self, node):
+        size = 0
+        ptr_size = 4
+
+        if len(node.children.keys()) == 0:
+            return 1  # 1 byte for array termination marker.
+
+        for key in node.children:
+            size += self.compute_trie_size(node.children[key])
+
+        return size + ptr_size * len(node.children.keys())
+
+    @staticmethod
+    def plot_trie_sizes(xvals, results, actual_size):
+        fig, ax = plt.subplots()
+        ax.plot(xvals, results, color='royalblue')
+        ax.plot(xvals, actual_size, color='cornflowerblue')
+        ax.set_title("Memory required based on the number of matrices (megabytes)")
+        ax.set_xlabel("Number of unique exercises")
+        ax.set_ylabel("Size of trie structure (megabytes)")
+        ax.legend(['trie size', 'hash list size'])
+        fig.show()
 
     def run_tx_deviation(self):
         txs = 10
@@ -169,6 +248,17 @@ class ConsistentHashExp(Experiment):
                 print(Fore.CYAN + "Generated address %d/%d" % (i, self.PB_KEY_COUNT))
         return bucket_load
 
+    def generate_keys(self, key_count):
+        return [self.generate_key() for _ in range(key_count)]
+
+    def hash_keys(self, keys, buckets):
+        block_seed = str(random.randint(0, 1000)) + "some more hash random" + str(random.randint(0, 1000))
+        block_hash = hashlib.sha256(bytes(block_seed, 'utf-8')).hexdigest()
+        bucket_load = [0 for _ in range(buckets)]
+        for key in keys:
+            bucket_load[int(self.get_bucket(block_hash + key))] += 1
+        return bucket_load
+
     def hash_tx(self, buckets, txcount):
         tx_load = [0 for _ in range(buckets)]
         tx_samples = np.random.choice(self.TX_EXAMPLES, size=txcount, replace=False)
@@ -183,14 +273,14 @@ class ConsistentHashExp(Experiment):
         wallet = Wallet(self.ARWEAVE_WALLET_DOWN)
         print(Fore.CYAN + "Loaded wallet with %.5f AR." % wallet.balance)
 
-        self.TX_EXAMPLES = arql(
-            wallet,
-            {
-                "op": "equals",
-                "expr1": "from",
-                "expr2": "DqXrdqdSonUccH2EHP0ifXiQZb_x86Vz_3w7BkYpnss"  # random address with a lot of txs
-            })
-        print(Fore.CYAN + "Loaded %d transactions." % len(self.TX_EXAMPLES))
+        # self.TX_EXAMPLES = arql(
+        #     wallet,
+        #     {
+        #         "op": "equals",
+        #         "expr1": "from",
+        #         "expr2": "DqXrdqdSonUccH2EHP0ifXiQZb_x86Vz_3w7BkYpnss"  # random address with a lot of txs
+        #     })
+        # print(Fore.CYAN + "Loaded %d transactions." % len(self.TX_EXAMPLES))
 
     def create_hashring(self, size):
         self.HASH_RING = HashRing([str(i) for i in range(size)], hash_fn='ketama')

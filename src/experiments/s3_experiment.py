@@ -48,7 +48,7 @@ class S3Experiment(Experiment):
         # self.plot_results()
 
     def run_upload(self):
-        self.upload(self.M0_PATH)
+        self.upload(self.DUMMY_PATH)
 
     def upload(self, filePath):
         print(Fore.CYAN + "Running upload experiment on %s" % filePath)
@@ -78,7 +78,7 @@ class S3Experiment(Experiment):
     def run_download(self):
         s3 = boto3.client('s3')
         results = []
-        for file in [self.M0_PATH, self.M1_PATH]:
+        for file in [self.M0_PATH, self.DUMMY_PATH]:
             print(Fore.CYAN + "Running download experiment on %s" % file)
             object_name = file.split('/')[-1].replace('.dat', '')
             startTime = time.time()

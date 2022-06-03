@@ -3,6 +3,7 @@ from src.experiments import Experiment
 import time
 import numpy as np
 import matplotlib.pyplot as plt
+from sklearn.decomposition import NMF
 
 from colorama import Fore
 
@@ -36,11 +37,11 @@ class MatrixSizeExperiment(Experiment):
     Finding 2: Sparsity still doesn't really change anything
     """
 
-    START_COL_SIZE = 10000
-    START_ROW_SIZE = 10000
+    START_COL_SIZE = 5000
+    START_ROW_SIZE = 5000
 
-    INC_X = 5000
-    INC_Y = 5000
+    INC_X = 1000
+    INC_Y = 1000
 
     TARGET_TIME = 10
 
@@ -57,15 +58,15 @@ class MatrixSizeExperiment(Experiment):
         if self.PREGENERATION:
             return
 
-        xvals, yvals, results, m0_s, m1_s = self.benchmark_multiplication(False, True)
-        self.plot_results(xvals, yvals, results, m0_s, m1_s, "Matrix Size (row)")
+        xvals, yvals, results, m0_s, m1_s = self.benchmark_nmf(True, True)
+        self.plot_results_nmf(xvals, yvals, results, m0_s, m1_s, "Number of features")
 
-        self.START_COL_SIZE = 5000
-        self.START_ROW_SIZE = 5000
-        self.INC_Y = 5000
-        self.INC_X = 5000
-        xvals, yvals, results, m0_s, m1_s = self.benchmark_multiplication(True, False)
-        self.plot_results(xvals, yvals, results, m0_s, m1_s, "Matrix Size (column)")
+        # self.START_COL_SIZE = 5000
+        # self.START_ROW_SIZE = 5000
+        # self.INC_Y = 5000
+        # self.INC_X = 5000
+        # xvals, yvals, results, m0_s, m1_s = self.benchmark_multiplication(True, False)
+        # self.plot_results(xvals, yvals, results, m0_s, m1_s, "Matrix Size (column)")
 
     @staticmethod
     def plot_results(xvals, yvals, results, m0_s, m1_s, xlabel):
@@ -90,6 +91,19 @@ class MatrixSizeExperiment(Experiment):
         print(results)
         print(m0_s)
         print(m1_s)
+        fig.show()
+
+    @staticmethod
+    def plot_results_nmf(xvals, yvals, results, m0_s, m1_s, xlabel):
+        fig, ax1 = plt.subplots(figsize=(7, 5))
+        ax1.plot(range(len(yvals)), results, color='royalblue')
+        ax1.tick_params(axis='y')
+        ax1.set_xticks(range(len(yvals)))
+        ax1.set_xticklabels(yvals, rotation=40)
+        ax1.set_xlabel(xlabel)
+        ax1.set_ylabel("Seconds to compute NMF")
+        ax1.set_title("NMF time for a 5Kx5K matrix")
+        ax1.legend(['NMF Seconds'])
         fig.show()
 
     def configure(self, **kwargs):
@@ -133,8 +147,9 @@ class MatrixSizeExperiment(Experiment):
 
     def generate_matrix(self):
         if self.START_COL_SIZE == self.START_ROW_SIZE:
-            m0 = np.random.normal(1000000, 400000, [self.START_ROW_SIZE, self.START_COL_SIZE])
-            m1 = np.random.normal(1000000, 400000, [self.START_ROW_SIZE, self.START_COL_SIZE])
+            # 100 variance for NMF, 400_000 for +-1M
+            m0 = np.random.normal(1000000, 100, [self.START_ROW_SIZE, self.START_COL_SIZE])
+            m1 = np.random.normal(1000000, 100, [self.START_ROW_SIZE, self.START_COL_SIZE])
             # m0 = np.random.randn(self.START_ROW_SIZE, self.START_COL_SIZE)
             # m1 = np.random.randn(self.START_ROW_SIZE, self.START_COL_SIZE)
         else:
@@ -187,4 +202,35 @@ class MatrixSizeExperiment(Experiment):
                     self.START_COL_SIZE += self.INC_Y
                 if scaleX:
                     self.START_ROW_SIZE += self.INC_X
+        return xvals, yvals, results, m0_sparsity, m1_sparsity
+
+    def benchmark_nmf(self, scaleX, scaleY):
+        xvals = []
+        yvals = []
+        m0_sparsity = []
+        m1_sparsity = []
+        results = []
+        n_comp = 10
+
+        m0, m1, z0, z1 = self.generate_matrix()
+        startTime = time.time()
+        print(Fore.CYAN + "Generated %dx%d matrix in %.2f seconds" %
+              (self.START_COL_SIZE, self.START_ROW_SIZE, time.time() - startTime))
+        while True:
+
+            startTime = time.time()
+            nmf = NMF(n_components=n_comp, init='random', random_state=0)
+            res = nmf.fit_transform(m0)
+            results.append(time.time() - startTime)
+            print(Fore.CYAN + "Multiplied %dx%d matrix in %.2f seconds" %
+                  (self.START_COL_SIZE, self.START_ROW_SIZE, results[-1]))
+
+            xvals.append(n_comp)
+            yvals.append(n_comp)
+
+            if results[-1] >= self.TARGET_TIME:
+                break
+            else:
+                n_comp += 10
+
         return xvals, yvals, results, m0_sparsity, m1_sparsity

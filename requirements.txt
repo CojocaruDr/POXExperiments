@@ -12,3 +12,5 @@ setuptools==62.3.1
 pytest==7.1.2
 base58~=2.1.1
 ecdsa~=0.17.0
+scikit-learn~=1.0.2
+PyTrie3~=0.2
