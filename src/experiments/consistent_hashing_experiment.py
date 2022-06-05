@@ -37,37 +37,82 @@ class ConsistentHashExp(Experiment):
         super().__init__()
 
     def run(self):
-        self.run_overtake_prob()
+        # self.run_overtake_prob()
+        self.plot_attacker_size([], [])
 
     def run_overtake_prob(self):
-        attacker_size = 5000
-        buckets = 20
-        key_count = 10_000
+        attacker_size = 500
+        buckets = 10
+        key_count = 1_000
+        transactions = 100
+        self.create_hashring(buckets)
 
         print(Fore.CYAN + "Generating keys...")
         keys = self.generate_keys(key_count)
+        exercises = self.generate_tx(buckets, transactions)
         print(Fore.CYAN + "Generated %d keys..." % key_count)
-
-        self.create_hashring(buckets)
 
         xvals = []
         results = []
         blocks = 1000
         for i in range(blocks):
-            load = self.hash_keys(keys[:attacker_size], buckets)
+            self.create_hashring(buckets)
+            load, bh = self.hash_keys(keys, buckets)
+            attacker_load = self.get_attacker_load(load, keys[:attacker_size])
+            validation_load = self.get_validation_load(attacker_load, exercises, bh)
             xvals.append(i)
-            results.append(max(load))
+            results.append(max(validation_load))
             if i % 100 == 0:
                 print(Fore.CYAN + "Computed block %d/%d" % (i, blocks))
+        print(Fore.CYAN + "Computed attacker distribution: ", results)
         self.plot_attacker_size(xvals, results)
+
+    def get_validation_load(self, attacker_load, exercises, bh):
+        self.create_hashring(5)
+
+        exercise_groups = dict()
+        for group in range(len(exercises)):
+            exercise_groups[group] = set()
+            for ex in exercises[group]:
+                solution = hashlib.sha256(bytes(str(group) + ex + str(random.randint(-1000, 1000)), 'utf-8')).hexdigest()
+                exercise_groups[group].add(self.get_bucket(bh + ex + solution))
+
+        attacker_coverages = []
+        for group in range(len(attacker_load)):
+            # For every attacker node in this group
+            for _ in attacker_load[group]:
+
+                # Find how many other attackers nodes this attacker can ask validation from
+                attacker_reach = 0
+                for validator_key in attacker_load[group]:
+                    validator_egroup = self.get_bucket(bh + validator_key)
+                    if validator_egroup in exercise_groups[group]:
+                        attacker_reach += 1
+                attacker_coverages.append(attacker_reach)
+
+        return attacker_coverages
+
+    @staticmethod
+    def get_attacker_load(load, attacker_keys):
+        attacker_load = dict()
+        for group in range(len(load)):
+            keys = [k for k in attacker_keys if k in load[group]]
+            attacker_load[group] = keys
+        return attacker_load
 
     @staticmethod
     def plot_attacker_size(xvals, results):
+        results = [63, 60, 57, 58, 53, 60, 57, 55, 67, 60, 73, 66, 58, 59, 67, 61, 60, 63, 70, 58, 60, 63, 66, 57, 64, 62, 60, 62, 64, 66, 61, 60, 63, 61, 63, 71, 70, 57, 62, 62, 71, 58, 63, 83, 50, 59, 63, 63, 66, 59, 58, 66, 56, 52, 55, 62, 63, 71, 64, 57, 63, 61, 68, 64, 66, 60, 62, 60, 75, 63, 63, 54, 58, 58, 60, 59, 62, 56, 58, 63, 61, 61, 63, 63, 64, 63, 60, 64, 61, 58, 64, 63, 58, 64, 59, 66, 55, 61, 69, 59, 66, 67, 55, 68, 74, 58, 55, 62, 56, 66, 65, 65, 73, 60, 65, 61, 68, 65, 64, 57, 64, 59, 56, 63, 64, 60, 65, 57, 68, 64, 71, 60, 61, 70, 62, 59, 56, 64, 52, 62, 64, 58, 62, 55, 54, 67, 63, 58, 57, 58, 58, 60, 62, 72, 61, 59, 59, 68, 64, 70, 55, 65, 58, 56, 70, 59, 71, 57, 66, 66, 55, 66, 64, 62, 59, 63, 58, 60, 71, 60, 61, 67, 57, 63, 62, 58, 67, 58, 58, 58, 63, 66, 72, 72, 63, 68, 60, 68, 67, 57, 62, 65, 64, 62, 59, 60, 63, 63, 59, 60, 65, 65, 62, 61, 68, 53, 58, 62, 63, 62, 60, 59, 61, 55, 60, 60, 61, 59, 61, 57, 58, 59, 71, 63, 60, 58, 70, 61, 58, 65, 60, 62, 58, 64, 57, 59, 62, 56, 60, 61, 58, 59, 65, 63, 67, 55, 61, 61, 58, 56, 56, 62, 67, 65, 63, 66, 64, 67, 59, 63, 61, 65, 61, 63, 60, 64, 58, 56, 64, 58, 65, 61, 66, 58, 60, 59, 61, 65, 62, 66, 64, 70, 56, 60, 60, 56, 59, 65, 56, 60, 64, 63, 70, 72, 66, 53, 60, 63, 59, 56, 56, 61, 69, 65, 60, 67, 62, 65, 66, 61, 61, 70, 59, 56, 60, 62, 69, 60, 59, 55, 59, 74, 67, 64, 68, 63, 62, 57, 60, 67, 67, 55, 58, 58, 70, 60, 64, 66, 62, 56, 66, 59, 54, 53, 65, 64, 58, 64, 66, 54, 71, 61, 60, 65, 63, 59, 66, 75, 54, 60, 61, 61, 60, 64, 68, 56, 69, 58, 64, 61, 63, 67, 54, 64, 58, 64, 54, 61, 56, 64, 56, 55, 56, 70, 65, 65, 60, 63, 61, 61, 63, 62, 55, 60, 66, 64, 56, 52, 69, 66, 58, 59, 62, 71, 66, 63, 56, 58, 61, 75, 60, 67, 55, 63, 62, 60, 65, 61, 61, 59, 59, 63, 74, 54, 61, 62, 61, 60, 58, 55, 69, 76, 61, 65, 68, 58, 62, 65, 56, 65, 66, 58, 60, 68, 60, 61, 57, 61, 64, 65, 58, 65, 59, 65, 58, 69, 70, 57, 58, 60, 75, 60, 67, 55, 62, 61, 57, 54, 56, 62, 62, 59, 62, 64, 66, 68, 70, 68, 64, 62, 59, 68, 63, 59, 59, 73, 60, 69, 57, 54, 66, 59, 57, 61, 56, 61, 59, 70, 64, 60, 63, 52, 65, 58, 65, 60, 61, 60, 56, 56, 64, 62, 61, 62, 65, 60, 60, 59, 62, 66, 65, 57, 63, 66, 59, 58, 61, 63, 70, 48, 53, 71, 64, 59, 68, 58, 70, 61, 60, 55, 60, 56, 61, 68, 55, 63, 67, 61, 67, 63, 62, 65, 65, 70, 71, 60, 61, 70, 63, 55, 61, 64, 64, 72, 56, 60, 70, 64, 58, 65, 56, 60, 66, 61, 65, 65, 69, 62, 59, 64, 57, 67, 58, 59, 57, 58, 63, 64, 57, 66, 55, 63, 64, 59, 62, 70, 61, 63, 67, 67, 61, 57, 72, 65, 57, 54, 67, 69, 59, 61, 56, 60, 53, 61, 60, 69, 60, 60, 65, 62, 74, 65, 64, 63, 63, 61, 57, 60, 61, 64, 58, 71, 64, 60, 66, 61, 64, 55, 64, 66, 56, 62, 62, 87, 58, 58, 63, 61, 60, 68, 69, 60, 60, 62, 66, 58, 56, 62, 58, 64, 61, 62, 59, 59, 60, 56, 61, 59, 63, 58, 67, 60, 55, 64, 61, 50, 54, 61, 65, 56, 61, 65, 64, 70, 64, 62, 66, 62, 70, 64, 65, 68, 60, 65, 56, 59, 66, 61, 70, 60, 61, 68, 56, 65, 67, 68, 62, 65, 63, 63, 54, 60, 51, 60, 64, 64, 61, 60, 56, 60, 61, 63, 64, 59, 68, 58, 59, 61, 58, 63, 67, 68, 63, 69, 55, 59, 61, 60, 71, 72, 61, 58, 63, 62, 63, 58, 64, 61, 62, 62, 64, 65, 62, 67, 59, 56, 69, 64, 60, 62, 62, 69, 63, 61, 64, 57, 64, 65, 60, 54, 70, 59, 57, 59, 58, 58, 72, 63, 60, 62, 64, 61, 61, 61, 56, 64, 62, 67, 61, 64, 56, 64, 57, 64, 60, 55, 59, 64, 65, 65, 63, 61, 68, 59, 66, 57, 59, 66, 58, 61, 62, 63, 63, 58, 62, 67, 59, 52, 61, 62, 60, 59, 72, 63, 69, 64, 59, 59, 62, 66, 67, 62, 63, 55, 57, 58, 54, 63, 61, 51, 65, 56, 57, 58, 64, 64, 62, 59, 67, 54, 70, 62, 61, 61, 62, 57, 60, 64, 65, 67, 57, 65, 56, 64, 70, 67, 61, 63, 57, 61, 63, 62, 64, 62, 56, 60, 65, 59, 65, 69, 69, 55, 65, 66, 64, 60, 67, 72, 61, 60, 54, 68, 74, 65, 77, 54, 65, 60, 67, 61, 56, 63, 71, 63, 64, 63, 60, 75, 59, 60, 63, 55, 62, 66, 65, 59, 65, 56, 65, 54, 63, 62, 72, 71, 60, 60, 58, 65, 64, 60, 57, 58, 59, 55, 58, 61, 67, 65, 67, 65, 61, 63, 53, 61, 58, 56, 60, 60, 67, 66, 59, 63, 59, 59, 57, 58, 64, 57, 65, 66, 68, 59, 72, 68, 55, 68, 55, 67, 61, 61, 59, 64, 61, 59, 60, 54, 65, 61, 60, 65, 68, 53, 62, 58, 63, 66, 61, 62, 64, 56]
+        xvals = range(len(results))
         fig, ax = plt.subplots()
         ax.plot(xvals, results, color='royalblue')
-        ax.set_title("Maximum number of attacker nodes in the same group (10 total groups)")
+        ax.set_title("Maximum number of colluding attacker nodes in the same group")
         ax.set_xlabel("Block number")
         ax.set_ylabel("Number of attacker nodes in one group")
+        for i in range(len(results) - 1):
+            if results[i] > 70 and results[i+1] > 70:
+                ax.axvline(i, color='red')
+        ax.legend(['colluding nodes', 'can overtake'])
         fig.show()
 
     def run_trie_benchmark(self):
@@ -254,10 +299,10 @@ class ConsistentHashExp(Experiment):
     def hash_keys(self, keys, buckets):
         block_seed = str(random.randint(0, 1000)) + "some more hash random" + str(random.randint(0, 1000))
         block_hash = hashlib.sha256(bytes(block_seed, 'utf-8')).hexdigest()
-        bucket_load = [0 for _ in range(buckets)]
+        bucket_load = [[] for _ in range(buckets)]
         for key in keys:
-            bucket_load[int(self.get_bucket(block_hash + key))] += 1
-        return bucket_load
+            bucket_load[int(self.get_bucket(block_hash + key))].append(key)
+        return bucket_load, block_hash
 
     def hash_tx(self, buckets, txcount):
         tx_load = [0 for _ in range(buckets)]
@@ -269,18 +314,27 @@ class ConsistentHashExp(Experiment):
         print(Fore.CYAN + "Computed tx load: ", tx_load)
         return tx_load
 
+    def generate_tx(self, buckets, txcount):
+        tx_load = [[] for _ in range(buckets)]
+        tx_samples = np.random.choice(self.TX_EXAMPLES, size=txcount, replace=False)
+        for i, tx in enumerate(tx_samples):
+            tx_load[int(self.get_bucket(tx))].append(tx)
+            if i % 1000 == 0:
+                print(Fore.CYAN + "Hashed %d/%d txs" % (i, self.PB_KEY_COUNT))
+        return tx_load
+
     def configure(self, **kwargs):
         wallet = Wallet(self.ARWEAVE_WALLET_DOWN)
         print(Fore.CYAN + "Loaded wallet with %.5f AR." % wallet.balance)
 
-        # self.TX_EXAMPLES = arql(
-        #     wallet,
-        #     {
-        #         "op": "equals",
-        #         "expr1": "from",
-        #         "expr2": "DqXrdqdSonUccH2EHP0ifXiQZb_x86Vz_3w7BkYpnss"  # random address with a lot of txs
-        #     })
-        # print(Fore.CYAN + "Loaded %d transactions." % len(self.TX_EXAMPLES))
+        self.TX_EXAMPLES = arql(
+            wallet,
+            {
+                "op": "equals",
+                "expr1": "from",
+                "expr2": "DqXrdqdSonUccH2EHP0ifXiQZb_x86Vz_3w7BkYpnss"  # random address with a lot of txs
+            })
+        print(Fore.CYAN + "Loaded %d transactions." % len(self.TX_EXAMPLES))
 
     def create_hashring(self, size):
         self.HASH_RING = HashRing([str(i) for i in range(size)], hash_fn='ketama')
